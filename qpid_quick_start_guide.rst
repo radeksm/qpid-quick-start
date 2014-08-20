@@ -36,11 +36,14 @@ basic installation and configuration of Qpid broker.
 Most of modern Linux distributions provide ready to install Qpid binary packages
 but some configuration details may differ depends on the dist flavour.
 
- * **CentOS 6.5**
+ * **CentOS 6.5.** CentOS 7 does not provide Qpid packages.
 
-   ``# yum install -y qpid-cpp-server qpid-cpp-server-ssl qpid-cpp-client qpid-tools``
+   ``# yum install -y qpid-cpp-server qpid-cpp-server-ssl qpid-cpp-client
+   qpid-tools``
 
-   !!! SSL support does not come with base packages, qpid-cpp-server-ssl is required.
+   **(!!!)** SSL support does not come with base packages, ``qpid-cpp-server-ssl``
+   is required.
+   CentOS 7 does not provide Qpid packages.
 
  * **Debian 7.5 Wheezy**
 
@@ -53,10 +56,10 @@ but some configuration details may differ depends on the dist flavour.
 There is a wide range of possible Qpid configurations below examples presents
 
  a. basic configuration
- b. AMQP over SSL with Qpid
- c. Qpid in HA configuration
+ b. Qpid AMQP over SSL
+ c. Qpid in HA pair configuration
 
-In fact qpidd can be started without any configuration provided, in this way all
+Qpidd daemon can be started without any configuration provided, in this way all
 default values will be taken. This is not recomended way of running Qpid but can
 be used for troubleshooting purposes.
 Below examples are not ment to be used for production environments, neither
@@ -64,31 +67,30 @@ security nor access control aspects are included in them.
 
  **3a. Basic configuration.**
 
- This configuration runs Qpid broker on default unencrypted AMQP port 5672, with
- no user Authentication, with no local data store and logging to syslog.
- This configuration allows to run Qpid broker as long as port 5672 is
- fee to use::
+  This configuration runs Qpid broker on default unencrypted AMQP port 5672, with
+  no user Authentication, with no local data store and logging to syslog.
+  This configuration allows to run Qpid broker as long as port 5672 is
+  fee to use. Configuration file example::
 
-  /etc/qpidd.conf:
-  auth=no
-  no-data-dir=yes
-  log-enable=info+
-  log-to-syslog=yes
-  port=5672
+   auth=no
+   no-data-dir=yes
+   log-enable=info+
+   log-to-syslog=yes
+   port=5672
 
  **3b. Running Qpid over SSL.** 
 
- SSL transport is a very common requirement. In most of the cases self signed
- SSL certificate is used despite the security weaknes it brings.
-
- Qpid requers Mozilla's Network Security Services Library (NSS) for SSL support
- and is managed by certutil extrnal utility, not provided by Qpid.
+  SSL transport is a very common requirement. In most of the cases self signed
+  SSL certificate is used despite the security weaknes it brings.
+  Qpid requers Mozilla's Network Security Services Library (NSS) for SSL support
+  and is managed by certutil extrnal utility, not provided by Qpid.
 
  **3b1. Qpid certificate and SSL store location.**
 
- In most of Lunux distros, PKI implementation keeps SSL certificates in /etc/pki
- directory. It is possible to use system wide PKI or create separate store just
- for Qpid usage and the second options is prefered for simple deployments.
+  In most of Lunux distros, PKI implementation keeps SSL certificates in
+  */etc/pki* directory. It is possible to use system wide PKI or create separate
+  store just for Qpid usage and the second options is prefered for simple
+  deployments.
 
   * Set and export below variables. This help us to avoid mistakes and allows
     copy/paste below commands::
@@ -97,11 +99,14 @@ security nor access control aspects are included in them.
      export CERT_PW_FILE="${CERT_DIR}/pwfile"
      export NICKNAME='qpid_broker'
 
-  * Create new dedicated for Qpid PKI store::
+  * Create new dedicated for Qpid PKI store with pseudorandom password::
 
-     mkdir ${CERT_DIR}
+     test -d ${CERT_DIR} || mkdir ${CERT_DIR}
      echo "$(date) $(uptime) $(uname -a)" | md5sum | cut -d' ' -f1 > ${CERT_PW_FILE}
      certutil -N -d ${CERT_DIR} -f ${CERT_PW_FILE}
+
+    **(!!!)** Before re-run above commands make sure *${CERT_PW_FILE}*
+    direcory is empty.
 
   * At this point, there is self signed CA in ``${CERT_DIR}``::
 
@@ -112,11 +117,11 @@ security nor access control aspects are included in them.
 
      certutil -S -d ${CERT_DIR} -n ${NICKNAME} -s "CN=${NICKNAME}" -t "CT,," -x -f ${CERT_PW_FILE} -z /usr/bin/certutil
 
-  * Grant read access right to qpidd group::
+  * Give read access right to qpidd group::
 
-     chmod -Rv g+r  qpidd /etc/qpid
-     chgrp -Rv qpidd /etc/qpid
-     chmod -Rv o-rwx /etc/qpid
+     chmod -Rv g+r ${CERT_DIR}
+     chgrp -Rv qpidd ${CERT_DIR}
+     chmod -Rv o-rwx ${CERT_DIR}
 
   * List all certificates in new store::
     
@@ -124,18 +129,18 @@ security nor access control aspects are included in them.
 
   * Prepare Qpid config file **/etc/qpidd.conf**::
 
-     cat <<'EOF' > /etc/qpidd.conf
-     auth=no
-     no-data-dir=yes
-     log-enable=info+
-     log-to-syslog=yes
-     port=5672
-     ssl-port=5671
-     ssl-cert-password-file=${CERT_PW_FILE}
-     ssl-cert-db=${CERT_DIR}
-     ssl-cert-name=${NICKNAME}
-     ssl-require-client-authentication=no
-     EOF
+     echo -e "\
+     auth=no\n\
+     no-data-dir=yes\n\
+     log-enable=info+\n\
+     log-to-syslog=yes\n\
+     port=5672\n\
+     ssl-port=5671\n\
+     ssl-cert-password-file=${CERT_PW_FILE}\n\
+     ssl-cert-db=${CERT_DIR}\n\
+     ssl-cert-name=${NICKNAME}\n\
+     ssl-require-client-authentication=no" \
+         > /etc/qpidd.conf
 
   * Restart Qpid daemon using one of below command::
 
@@ -146,8 +151,12 @@ security nor access control aspects are included in them.
   * Verify Qpid daemon is accessible on 5671::
 
      ss -ltp
+     netstat -nlp -t
      openssl s_client -connect localhost:5671
 
+    Check if you see below line in the log file::
+
+     [Security] notice Listening for SSL connections on TCP/TCP6 port 5671
 
  **3c. Qpid high avaiability (HA) configuration.**
 
@@ -158,7 +167,15 @@ security nor access control aspects are included in them.
 6. Testing and troubleshooting
 ------------------------------
 
-**6.1 Checking Qpid status**
+a. **Run qpidd in foreground**
+
+ ::
+
+   qpidd --config /etc/qpidd.conf
+
+
+
+b. **Checking Qpid status**
 
  ::
 

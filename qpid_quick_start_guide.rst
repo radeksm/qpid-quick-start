@@ -160,8 +160,32 @@ security nor access control aspects are included in them.
 
  **3c. Qpid high avaiability (HA) configuration.**
 
-  To configure Qpid in HA, follow point 3a or 3b to setup two qpid instances
-  on two separate hosts, in below example hostnames: qpid1, qpid2.
+  To configure Qpid in HA, follow point **3a** or **3b** to setup two qpid
+  instances on two separate hosts, in below example hostnames are: qpid1,
+  qpid2. The configuration files should be identical, example::
+
+   auth=no
+   no-data-dir=yes
+   log-enable=info+
+   log-to-syslog=yes
+   port=5672
+   ha-cluster=yes
+   ha-brokers-url=amqp:tcp:qpid1:5672,tcp:qpid2:5672
+   ha-replicate=all
+   ha-username=ha_qpid
+   ha-password=q_ha_pass
+   ha-mechanism=PLAIN
+
+  Having two qpid nodes up and running in this basic configuration we have
+  should check the status and promote one of the nodes as an active node.
+
+  ::
+
+   [root@qpid2 /]# qpid-ha status
+   joining
+   [root@qpid2 /]# qpid-ha promote
+   [root@qpid2 /]# qpid-ha status
+   active
 
 
 6. Testing and troubleshooting
@@ -232,9 +256,15 @@ b. **Checking Qpid status**
 
 
 
-**6.2 Checking Qpid modules**
+c. **6.2 Missing Qpid modules/plugins**
 
- Qpid modules and extensions are located in: ``/usr/lib64/qpid/daemon/``
+ Qpid modules and extensions are located in: ``/usr/lib64/qpid/daemon/``.
+ Qpidd reporting unknown configuration options may be a sign of missing module.
+
+ Example, missing HA module ``ha.so``::
+
+  2014-08-20 18:34:12 [Broker] critical Unexpected error: Error in configuration file /etc/qpidd.conf: Bad argument: |ha-cluster=yes|
+
  To check which modules are loaded you can execute below command and search for
  shared libraries loaded from ``/usr/lib64/qpid/daemon/``.
 

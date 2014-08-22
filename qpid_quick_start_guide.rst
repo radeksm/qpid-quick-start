@@ -14,7 +14,6 @@ to setup this service in basic configuration.
 4. Running qpid
 5. Running qpid in HA
 6. Testing and troubleshooting
-7. Additional notes
 
 
 1. Introduction
@@ -26,8 +25,9 @@ basic installation and configuration of Qpid broker.
 
 **Basic assumption**
 
- * Qpid config file: ``/etc/qpidd.conf:``
- * Qpid daemon runs as a ``qpidd:qpidd``
+ * Qpid config file: ``/etc/qpidd.conf:``.
+ * Qpid daemon runs as a ``qpidd:qpidd``.
+ * Qpid version 0.22 or higher.
 
 
 2.Installation
@@ -41,9 +41,9 @@ but some configuration details may differ depends on the dist flavour.
    ``# yum install -y qpid-cpp-server qpid-cpp-server-ssl qpid-cpp-client
    qpid-tools``
 
-   **(!!!)** SSL support does not come with base packages, ``qpid-cpp-server-ssl``
-   is required.
-   CentOS 7 does not provide Qpid packages.
+   **(!!!)** SSL support does not come with base packages,
+   ``qpid-cpp-server-ssl`` is required.
+   CentOS 7 does not provide Qpid packages at all.
 
  * **Debian 7.5 Wheezy**
 
@@ -142,7 +142,7 @@ security nor access control aspects are included in them.
      ssl-require-client-authentication=no" \
          > /etc/qpidd.conf
 
-  * Restart Qpid daemon using one of below command::
+  * Restart Qpid daemon using::
 
      /etc/init.d/qpidd start
      service qpidd start
@@ -176,123 +176,126 @@ security nor access control aspects are included in them.
    ha-password=q_ha_pass
    ha-mechanism=PLAIN
 
-  Having two qpid nodes up and running in this basic configuration we have
-  should check the status and promote one of the nodes as an active node.
+  Having two qpid nodes up and running in this basic configuration here is how
+  to setup Qpid active/backup cluster.
 
-  ::
+  * Cheking initial status of both nodes::
 
-   [root@qpid2 /]# qpid-ha status
-   joining
-   [root@qpid2 /]# qpid-ha promote
-   [root@qpid2 /]# qpid-ha status
-   active
+     [root@qpid1 ~]# qpid-ha status --all
+     qpid1:5672 joining
+     qpid2:5672 joining
+
+  * Promoting one of the nodes to being a master node of the cluster
+    and checking status again::
+
+     [root@qpid1 ~]# qpid-ha promote
+     [root@qpid1 ~]# qpid-ha status --all
+     qpid1:5672 active
+     qpid2:5672 joining
+
+  * We need to give clusert a little bit time to form the cluster.
+
+    ::
+
+     [root@qpid1 ~]# qpid-ha status --all
+     qpid1:5672 active
+     qpid2:5672 ready
+
+  * Cluster status with one of the hosts down::
+
+     [root@qpid1 ~]# qpid-ha  status --all
+     qpid1:5672 active
+     qpid2:5672 [Errno 111] Connection refused
 
 
 6. Testing and troubleshooting
 ------------------------------
 
-a. **Run qpidd in foreground**
+ **a. Run qpidd in foreground**
 
- ::
+  ::
 
-   qpidd --config /etc/qpidd.conf
-
-
-
-b. **Checking Qpid status**
-
- ::
-
-  root@d64:~# qpid-stat -c admin/1qazs@localhost:5672
-  Connections
-  client-addr                     cproc      cpid  auth        connected  idle  msgIn  msgOut
-  =============================================================================================
-  127.0.0.1:5672-127.0.0.1:39928  qpid-stat  3969  admin@QPID  2s         0s     251    320
-  [root@h102 radek]# qpid-stat  -e
-  Exchanges
-  exchange            type     dur  bind  msgIn  msgOut  msgDrop  byteIn  byteOut  byteDrop
-  ===========================================================================================
-  qmf.default.direct  direct           1    69     69       0     76.3k   76.3k       0
-  amq.direct          direct   Y       1   522    522       0      212k    212k       0
-  amq.topic           topic    Y       0     0      0       0        0       0        0
-  qpid.management     topic            3   470     78     392      181k   35.0k     146k
-  amq.fanout          fanout   Y       0     0      0       0        0       0        0
-  amq.match           headers  Y       0     0      0       0        0       0        0
-  qmf.default.topic   topic            1   479     89     390      518k    109k     409k
-
-  root@d64:~# qpid-stat -c admin/1qazs@localhost:5672
-  Connections
-  client-addr                     cproc      cpid  auth        connected  idle  msgIn  msgOut
-  =============================================================================================
-  128.0.0.1:5672-127.0.0.1:39915  qpid-stat  3735  admin@QPID  2s         0s     251    320
-
-  root@d64:~# qpid-printevents  admin/1qazs@localhost:5672
-  Tue Jun 17 22:54:26 2014 NOTIC qpid-printevents:brokerConnected broker=localhost:5672
-  Tue Jun 17 22:54:28 2014 INFO  org.apache.qpid.broker:bind broker=localhost:5672 rhost=127.0.0.1:5672-127.0.0.1:39918 user=admin@QPID exName=qpid.management qName=topic-d64.3775.1 key=console.event.# args={}
-  Tue Jun 17 22:54:28 2014 INFO  org.apache.qpid.broker:bind broker=localhost:5672 rhost=127.0.0.1:5672-127.0.0.1:39918 user=admin@QPID exName=qmf.default.topic qName=qmfc-v2-hb-d64.3775.1 key=agent.ind.heartbeat.# args={}
-  Tue Jun 17 22:54:28 2014 INFO  org.apache.qpid.broker:bind broker=localhost:5672 rhost=127.0.0.1:5672-127.0.0.1:39918 user=admin@QPID exName=qmf.default.topic qName=qmfc-v2-ui-d64.3775.1 key=agent.ind.event.# args={}
-
-  root@d64:~# qpid-tool     admin/1qazs@localhost:5672  
-  Management Tool for QPID
-  qpid: list
-  Summary of Objects by Type:
-    Package                 Class         Active  Deleted
-    =======================================================
-    org.apache.qpid.broker  binding       12      12
-    org.apache.qpid.broker  broker        1       0
-    org.apache.qpid.broker  system        1       0
-    org.apache.qpid.broker  subscription  5       5
-    org.apache.qpid.broker  connection    1       1
-    org.apache.qpid.broker  session       1       1
-    org.apache.qpid.broker  queue         5       5
-    org.apache.qpid.broker  exchange      8       0
-    org.apache.qpid.broker  vhost         2       0
-
-  root@d64:~# qpid-stat -c admin/1qazs@localhost:5672
-  Connections
-  client-addr                     cproc      cpid  auth        connected  idle  msgIn  msgOut
-  =============================================================================================
-  127.0.0.1:5672-127.0.0.1:39928  qpid-stat  3969  admin@QPID  2s         0s     251    320
-
-
-
-c. **6.2 Missing Qpid modules/plugins**
-
- Qpid modules and extensions are located in: ``/usr/lib64/qpid/daemon/``.
- Qpidd reporting unknown configuration options may be a sign of missing module.
-
- Example, missing HA module ``ha.so``::
-
-  2014-08-20 18:34:12 [Broker] critical Unexpected error: Error in configuration file /etc/qpidd.conf: Bad argument: |ha-cluster=yes|
-
- To check which modules are loaded you can execute below command and search for
- shared libraries loaded from ``/usr/lib64/qpid/daemon/``.
-
- ::
-
-  lsof -n -p $(pgrep qpidd)
-
-
-**6.3 Problems with reading SSL certificates or keys**
-
- These are very common problems and many times below errors mislead and make
- problem more complicated than it is.
-
- Errors::
-
-  Jun 22 11:10:43 qpid1 qpidd[739]: 2014-06-22 11:10:43 error Failed to initialise SSL plugin: Failed: NSS error [-8015] (qpid/sys/ssl/util.cpp:103)
-  certutil: function failed: SEC_ERROR_LEGACY_DATABASE: The certificate/key database is in an old, unsupported format.
-  [root@os-mysql1 ha_qpid]# certutil -L -d /etc/pki/qpidd/
-  certutil: function failed: SEC_ERROR_LEGACY_DATABASE: The certificate/key database is in an old, unsupported format.
-  [root@os-mysql1 ha_qpid]# sudo -u qpidd /usr/sbin/qpidd --config /etc/qpidd.conf
-  certutil: function failed: SEC_ERROR_LEGACY_DATABASE: The certificate/key database is in an old, unsupported format.
-
- All above errors are caused by incorrect permissions on SSL certificate store.
- Qpid daemon runs as unprivileged user which does not have read access to SSL
- certificate and private key.
+    qpidd --config /etc/qpidd.conf
 
 
 
 
+ **b. Missing Qpid modules/plugins**
 
-.. # openssl pkcs12 -export -out  os-mysql1.local.p12 -inkey os-mysql1.local.key -in os-mysql1.local.crt 
+  Qpid modules and extensions are located in: ``/usr/lib64/qpid/daemon/``.
+  Qpidd reporting unknown configuration options may be a sign of missing module.
+
+  Example, missing HA module ``ha.so``::
+
+   2014-08-20 18:34:12 [Broker] critical Unexpected error: Error in configuration file /etc/qpidd.conf: Bad argument: |ha-cluster=yes|
+
+  To check which modules are loaded you can execute below command and search for
+  shared libraries loaded from ``/usr/lib64/qpid/daemon/``.
+
+  ::
+
+   lsof -n -p $(pgrep qpidd)
+
+
+ **c. Problems with reading SSL certificates or keys**
+
+  These are very common problems and many times below errors mislead and make
+  problem more complicated than it is.
+
+  Errors::
+
+   Jun 22 11:10:43 qpid1 qpidd[739]: 2014-06-22 11:10:43 error Failed to initialise SSL plugin: Failed: NSS error [-8015] (qpid/sys/ssl/util.cpp:103)
+   certutil: function failed: SEC_ERROR_LEGACY_DATABASE: The certificate/key database is in an old, unsupported format.
+   [root@os-mysql1 ha_qpid]# certutil -L -d /etc/pki/qpidd/
+   certutil: function failed: SEC_ERROR_LEGACY_DATABASE: The certificate/key database is in an old, unsupported format.
+   [root@os-mysql1 ha_qpid]# sudo -u qpidd /usr/sbin/qpidd --config /etc/qpidd.conf
+   certutil: function failed: SEC_ERROR_LEGACY_DATABASE: The certificate/key database is in an old, unsupported format.
+
+  All above errors are caused by incorrect permissions on SSL certificate store.
+  Qpid daemon runs as unprivileged user which does not have read access to SSL
+  certificate and private key.
+
+ **d. Qpid node unable connect to master node**
+
+  Error exampl:
+
+  ::
+
+   [root@qpid2 /]# qpid-ha  status  --all
+   qpid1:5672 [Errno 113] No route to host
+   qpid2:5672 joining
+   [root@qpid2 /]# telnet qpid1 5672
+   Trying 192.168.94.103...
+   telnet: connect to address 192.168.94.103: No route to host
+
+  Problem may be caused by closed by firewall port on the master node.
+
+
+ **e. Checking Qpid status**
+
+  Qpid comes with set of tools, one of which is ``qpid-stat``. It allows examine
+  varius qpid statistics.
+
+  ::
+
+   [root@h102 radek]# qpid-stat  -e
+   Exchanges
+   exchange            type     dur  bind  msgIn  msgOut  msgDrop  byteIn  byteOut  byteDrop
+   ===========================================================================================
+   qmf.default.direct  direct           1    69     69       0     76.3k   76.3k       0
+   amq.direct          direct   Y       1   522    522       0      212k    212k       0
+   amq.topic           topic    Y       0     0      0       0        0       0        0
+   qpid.management     topic            3   470     78     392      181k   35.0k     146k
+   amq.fanout          fanout   Y       0     0      0       0        0       0        0
+   amq.match           headers  Y       0     0      0       0        0       0        0
+   qmf.default.topic   topic            1   479     89     390      518k    109k     409k
+
+  If Qpid requiers authentication ``qpid-stat`` command should looke like this:
+
+  ::
+
+   [root@h102 radek]# qpid-stat  -c admin/1qazs@localhost:5672
+   Connections
+   client-addr                     cproc      cpid  auth        connected  idle  msgIn  msgOut
+   =============================================================================================
+   127.0.0.1:5672-127.0.0.1:39928  qpid-stat  3969  admin@QPID  2s         0s     251    320

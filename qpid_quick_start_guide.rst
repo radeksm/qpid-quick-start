@@ -1,12 +1,12 @@
-Qpid Quick Start Guide
-======================
+Qpid C++ broker Quick Start Guide
+=================================
 
 
 General
 -------
 
 If you’re new to Qpid, this guide offers useful tips to help you find your way
-to setup this service in basic configuration.
+to setup Qpid C++ broker in very basic configuration and how to use Qpid tools.
 
 1. Introduction
 2. Installation
@@ -19,9 +19,9 @@ to setup this service in basic configuration.
 1. Introduction
 ---------------
 
-Apache Qpid™ is a cross-platform AMQP messaging broker that supports many
-languages and platforms. This document is a step-by-step guide which describes
-basic installation and configuration of Qpid broker.
+Apache Qpid™ C++ broker is a cross-platform AMQP messaging daemon which supports
+many languages and platforms. This document is a step-by-step guide which
+describes basic installation and configuration of Qpid C++ broker.
 
 **Basic assumption**
 

@@ -223,12 +223,17 @@ security nor access control aspects are included in them.
 
   ::
 
-    qpidd --config /etc/qpidd.conf
+   qpidd --config /etc/qpidd.conf
 
+ **b. Enable extra logging**
 
+  Qpid allows to configure logging subsystem in very sophisticated manner
+  but for sake of troubleshooting below example shows how to run qpidd in
+  foreground with debug logging enabled::
 
+   /usr/sbin/qpidd --config /etc/qpidd.conf --log-enable debug+
 
- **b. Missing Qpid modules/plugins**
+ **c. Missing Qpid modules/plugins**
 
   Qpid modules and extensions are located in: ``/usr/lib64/qpid/daemon/``.
   Qpidd reporting unknown configuration options may be a sign of missing module.
@@ -245,7 +250,7 @@ security nor access control aspects are included in them.
    lsof -n -p $(pgrep qpidd)
 
 
- **c. Problems with reading SSL certificates or keys**
+ **d. Problems with reading SSL certificates or keys**
 
   These are very common problems and many times below errors mislead and make
   problem more complicated than it is.
@@ -263,7 +268,7 @@ security nor access control aspects are included in them.
   Qpid daemon runs as unprivileged user which does not have read access to SSL
   certificate and private key.
 
- **d. Qpid node unable connect to master node**
+ **e. Qpid node unable connect to master node**
 
   Error exampl:
 
@@ -279,7 +284,7 @@ security nor access control aspects are included in them.
   Problem may be caused by closed by firewall port on the master node.
 
 
- **e. Checking Qpid status**
+ **f. Checking Qpid status**
 
   Qpid comes with set of tools, one of which is ``qpid-stat``. It allows examine
   varius qpid statistics.

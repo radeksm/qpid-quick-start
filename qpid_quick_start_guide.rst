@@ -26,7 +26,7 @@ describes basic installation and configuration of Qpid C++ broker.
 **Basic assumption**
 
  * Qpid config file: ``/etc/qpidd.conf:``.
- * Qpid daemon runs as a ``qpidd:qpidd``.
+ * Qpid daemon runs as a ``qpidd:qpidd`` user:group.
  * Qpid version 0.22 or higher.
 
 
@@ -62,6 +62,14 @@ There is a wide range of possible Qpid configurations below examples presents
 Qpidd daemon can be started without any configuration provided, in this way all
 default values will be taken. This is not recomended way of running Qpid but can
 be used for troubleshooting purposes.
+
+To list all possible configuration options execute below command::
+
+ /usr/sbin/qpidd --help
+
+All the options have a short description and the default values are shown in the brackets.
+Every option listed in ``qpidd --help`` output can be use in configuration file.
+
 Below examples are not ment to be used for production environments, neither
 security nor access control aspects are included in them.
 
